@@ -1,0 +1,10 @@
+let h<H> = true;
+let l = 3;
+if (h) 
+    {
+    let r = {x1 : h}
+    }
+else {
+    let r = {x1 : h}
+    };
+let q = 3

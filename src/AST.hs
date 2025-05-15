@@ -5,6 +5,7 @@ import Algebra.Lattice
 import Data.List (intercalate)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
+import Debug.Trace (trace)
 
 -- i don't think env needs locations, at least not for now
 -- type Env = M.Map (Either Variable Location) LevelT
@@ -25,8 +26,7 @@ data Expr
     | Let Variable LevelT Expr
     | LetInf Variable Expr
     | BO BinOper Expr Expr
-    -- Rec Variable --||--
-    -- | Rec_Field (Label, Expr)
+    | Rec_Field Expr Label
     | Rec (NE.NonEmpty (Label, Expr))
     | Proj Expr Label
     | IfThenElse Expr Expr Expr
@@ -43,6 +43,7 @@ instance Show Expr where
     show (N n) = show n
     show (B b) = show b
     show Unit = "()"
+    show (Rec_Field r l) = show r ++ "." ++ show l
     show (Var x) = show x
     show (App e1 e2) = show e1 ++ "(" ++ show e2 ++ ")"
     show (Abs x t e) = "(\\" ++ show x ++ "." ++ show t ++ "->" ++ show e ++ ")"
@@ -80,7 +81,7 @@ instance Show Label where
     show (LabelS s) = s
     show (LabelI i) = show i
 
-data BinOper = Add | Sub | Mul | Div | Eq
+data BinOper = Add | Sub | Mul | Div | Eql
     deriving (Eq)
 
 instance Show BinOper where
@@ -88,7 +89,7 @@ instance Show BinOper where
     show Sub = "-"
     show Mul = "*"
     show Div = "/"
-    show Eq = "=="
+    show Eql = "=="
 
 data LowHigh = Low | High deriving (Eq)
 
@@ -114,7 +115,8 @@ instance Show LevelT where
     show (l1 :-> l2) = show l1 ++ "->" ++ show l2
     show (l1 :@ l2) = show l1 ++ "@" ++ show l2
     show Empty = "()"
-    show (Environment env) = show env 
+    show (Environment env) = show env
+    
 
 arity :: LevelT -> Int
 arity (_ :-> l2) = 1 + arity l2
@@ -122,30 +124,31 @@ arity (l1 :@ l2) = arity l1 + arity l2
 arity _ = 0
 
 recordChecker :: LevelT -> LevelT
-recordChecker (Environment env) =  
-    let types = M.elems env
-        loop [] = Empty
-        loop (t:ts) = case t of
-            LH Low -> LH Low
-            Environment subEnv -> 
-                case recordChecker (Environment subEnv) of
-                    LH Low -> LH Low
-                    _      -> loop ts
-            _ -> loop ts
-    in loop types
+recordChecker (Environment env1) =
+  trace ("recordChecker called with env: " ++ show (env1)) $
+  let types = M.elems env1
+  in checkTypes types
+  where
+    checkTypes [] = LH High
+    checkTypes (t:ts) = 
+      case t of
+        LH Low -> LH Low
+        RefLH Low -> LH Low
+        Environment subEnv ->
+          trace ("Descending into subEnv: " ++ show subEnv) $
+
+          let subResult = recordChecker (Environment subEnv)
+          in if subResult == LH Low then LH Low else checkTypes ts
+        _ -> checkTypes ts
+
+recordChecker (LH Low) = LH Low
 recordChecker _ = LH High
-   
 
 instance Lattice LevelT where
-    (Environment env) \/ (LH Low) = 
-        if recordChecker (Environment env) == LH Low
-            then LH Low
-            else LH High
+    (Environment env) \/ (LH Low) = LH Low 
     (Environment _) \/ (LH High) = LH High
-    (LH Low) \/ (Environment env) = 
-        if recordChecker (Environment env) == LH Low
-            then LH Low
-            else LH High
+    (LH Low) \/ (Environment env) = LH Low
+    
     (LH High) \/ (Environment _) = LH High
     (Environment env1) \/ (Environment env2) = 
         recordChecker (Environment env1) \/ recordChecker (Environment env2)
@@ -169,19 +172,13 @@ instance Lattice LevelT where
     _ \/ (RefLH _) = error "Cannot join a reference with a type"
 
 
-
     (Environment _) /\ (LH Low) = LH Low
-    (Environment env) /\ (LH High) = 
-        if recordChecker (Environment env) == LH Low
-            then LH Low
-            else LH High
+    (Environment env) /\ (LH High) = LH Low
     (LH Low) /\ (Environment _) = LH Low
-    (LH High) /\ (Environment env) = 
-        if recordChecker (Environment env) == LH Low
-            then LH Low
-            else LH High
-    (Environment env) /\ Empty = recordChecker (Environment env)
-    Empty /\ (Environment env) = recordChecker (Environment env)
+    (LH High) /\ (Environment env) = LH Low
+    
+    (Environment env) /\ Empty = LH Low
+    Empty /\ (Environment env) = LH Low
     (Environment env1) /\ (Environment env2) = 
         recordChecker (Environment env1) /\ recordChecker (Environment env2)
     (LH Low) /\ (LH Low) = LH Low
@@ -207,7 +204,7 @@ instance Lattice LevelT where
     _ /\ (_ :@ _) = error "Cannot meet a effect with a type"
     (_ :-> _) /\ _ = error "Cannot meet a function with a type"
     _ /\ (_ :-> _) = error "Cannot meet a function with a type"
-
+    
 instance BoundedMeetSemiLattice LevelT where
     top = Empty
 

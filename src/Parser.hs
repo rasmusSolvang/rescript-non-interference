@@ -93,6 +93,7 @@ expression =
                 <|> try number
                 <|> try boolean
                 <|> variable
+
            )
 
 -- {e_1; e_2; e_3}
@@ -113,15 +114,23 @@ record_fields =
         return $ Rec (NE.fromList exprs)
         
 
--- Returns a tuple of a labelIdentifier (string) and the corrosponding expression
+-- Returns a tuple of a labelIdentifier (string) and the corresponding expression
 -- Note it is not possible to explicit assign a security type to a label
 assign_record :: Parser (Label, Expr)
 assign_record = 
     do
         name <- identifier
         _ <- colon
-        expr <- expression
+        expr <- seqExpressions
         return $ (LabelS name, expr)
+        
+record_field :: Parser Expr
+record_field = 
+    do 
+        record_ <- expression
+        _ <- char '.'
+        field_name <- identifier
+        return $ Rec_Field record_ (LabelS field_name)
 
 number :: Parser Expr
 number = N . fromIntegral <$> integer
@@ -220,13 +229,25 @@ application = do
     return $ App func arg
 
 binaryOperation :: Parser Expr
-binaryOperation = do
-    op <- Add <$ char '+' <|> Sub <$ char '-' <|> Mul <$ char '*' <|> Div <$ char '/'
-    spaces
+binaryOperation = parens $ do
     left <- expression
     spaces
-    BO op left <$> expression
+    op <- binaryOperator
+    spaces
+    right <- expression
+    return $ BO op left right
 
+-- Binary operator parser stays the same
+binaryOperator :: Parser BinOper
+binaryOperator = 
+      (char '+' >> return Add)
+  <|> (char '-' >> return Sub)
+  <|> (char '*' >> return Mul)
+  <|> (char '/' >> return Div)
+  <|> (string "==" >> return Eql)
+
+
+-- cabal run exes -- progs/4.rescript
 
 
 low :: Parser LevelT

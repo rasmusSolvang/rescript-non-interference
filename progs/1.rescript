@@ -1,21 +1,16 @@
-
-let l<L> = ref(1);
+let i<L> = 1;
+let l = ref(i);
 let h<H> = 2;
 
-let f = (x<H>) => {if (x==2) {  
+let f = (x<H>) => {if ((h==2)) {  
             l:=2
 			}
         else { 
             l:=3}
-		}
+		};
 
 let r = {
-    x1 : {y : {f (h); 3}},
+    x1 :  f(h); 3,
     x2 : 2
    }
 
-
-if (h==2) 
-    {let p<L> = r.x1.y}
-else 
-	{let p<L> = 9}

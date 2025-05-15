@@ -135,18 +135,26 @@ check env pc expr = case expr of
         sat (pc `joinLeq` LH l) "NotSat: pc <= LH l"
         return $ LH Low :@ (LH l /\ eff') :|> env
     (IfThen {}) -> error "IfThen: not implemented"
-    (Rec fields) -> trace ("Record: " ++ show expr) $ do
-        let listFields = NE.toList fields
+    (Rec expression) -> trace ("Record: " ++ show expr) $ do
+        let listFields = NE.toList expression
         --Loop
         let loop envLoop eff [] = return (envLoop, eff)
             loop envLoop eff ((label_i, ei) : rest) = do
-                li :@ eff_i :|> _ <- check env pc ei
-                let updatedEnv = M.insert (Right label_i) li envLoop
+                ti :@ eff_i :|> _ <- check env pc ei -- 
+                --sat (pc `joinLeq` ti) ("NotSat pc <= t_i, t_i: " ++ show ti ++ "pc: " ++ show pc ++ "ei : " ++ show ei)
+                let updatedEnv = M.insert (Right label_i) ti envLoop
                 let updatedEff = (eff_i /\ eff)
                 loop updatedEnv updatedEff rest
 
         (env1, eff_min) <- loop M.empty Empty listFields
         return $ Environment env1 :@ eff_min :|> env
         -- data LevelTEnv = LevelT :|> Env deriving (Eq, Show)
+    (Rec_Field e l) -> trace ("Record Field : " ++ show e ++ "." ++ show l) $ do
+         Environment gamma :@ eff :|> _ <- check env pc e
+         (t) <- elookup (Right l :: VarLab) gamma
+         sat (pc `joinLeq` eff) "NotSat pc <= eff"
+         return $ t :@ eff :|> env
+         
+
     (Proj {}) -> error "Proj: not implemented"
     (Loc _) -> error "Loc: not implemented"

@@ -1,0 +1,6 @@
+let h<H> = true;
+if (h) {
+    let r = {x1 : 1, x2 : 2}
+} else {
+    let r = {x3 : 3, x4 : 4}
+}
