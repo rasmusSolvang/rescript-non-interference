@@ -8,13 +8,25 @@ import Control.Monad.State.Lazy
 import Data.Map qualified as M
 import StateEither
 
-elookup :: (Ord k, Show k) => k -> M.Map k a -> StateEither [String] a
-elookup var env = case M.lookup var env of
-    Just t -> return t
-    Nothing -> do
-        let msg = "Variable " ++ show var ++ " not found in environment"
-        modify (++ [msg])
-        fail msg
+import Data.List.NonEmpty qualified as NE
+
+
+elookup :: VarLab -> M.Map VarLab a -> StateEither [String] a
+elookup varlab env = case varlab of 
+        Left v -> 
+            case M.lookup (Left v) env of
+            Just t -> return t
+            Nothing -> do
+                let msg = "Variable " ++ show v ++ " not found in environment"
+                modify (++ [msg])
+                fail msg
+        Right l -> 
+            case M.lookup (Right l) env of
+            Just t -> return t
+            Nothing -> do
+                let msg = "Variable " ++ show l ++ " not found in environment"
+                modify (++ [msg])
+                fail msg
 
 sat :: Bool -> String -> StateEither [String] ()
 sat True _ = return ()
@@ -37,21 +49,24 @@ check env pc expr = case expr of
         case l of
             t1 :-> (t2 :@ eff') -> do
                 sat (pc == LH Low) "NotSat: pc == LH Low"
-                return $ LH Low :@ eff :|> M.insert x (t1 :-> (t2 :@ eff')) env
+                return $ LH Low :@ eff :|> M.insert (Left x) (t1 :-> (t2 :@ eff')) env
             RefLH l' -> do
                 sat (pc `joinLeq` LH l') "NotSat: pc <= LH l'"
-                return $ LH Low :@ (LH l' /\ eff) :|> M.insert x (RefLH l') env
+                return $ LH Low :@ (LH l' /\ eff) :|> M.insert (Left x) (RefLH l') env
+            Environment l' -> trace ("PC:" ++ show pc ++ "Eff" ++ show eff) $ do
+                sat (pc `joinLeq` eff) "NotSat: pc <= t1, TEST"
+                return $ LH Low :@ (eff /\ pc) :|> M.insert (Left x) (Environment l') env
             t1 -> do
                 sat (t1 `elem` [LH Low, LH High]) "NotSat: t1 `elem` [LH Low, LH High]"
                 sat (pc `joinLeq` t1) "NotSat: pc <= t1"
-                return $ LH Low :@ (t1 /\ eff) :|> M.insert x t1 env
+                return $ LH Low :@ (t1 /\ eff) :|> M.insert (Left x) t1 env
     (Let x t1 e) -> trace ("Let: " ++ show expr) $ do
         t2 :@ t3 :|> _ <- check env pc e
         sat (t1 `elem` [LH Low, LH High]) "NotSat: t1 `elem` [LH Low, LH High]"
         sat (t2 `elem` [LH Low, LH High]) "NotSat: t2 `elem` [LH Low, LH High]"
         sat (t2 `joinLeq` t1) "NotSat: t2 <= t1"
         sat (pc `joinLeq` t1) "NotSat: pc <= t1"
-        return $ LH Low :@ (t1 /\ t3) :|> M.insert x t1 env
+        return $ LH Low :@ (t1 /\ t3) :|> M.insert (Left x) t1 env
     (IfThenElse e1 e2 e3) -> trace ("IfThenElse: " ++ show expr) $ do
         l1 :@ eff1 :|> _ <- check env pc e1
         sat (l1 `elem` [LH Low, LH High]) "NotSat: l1 `elem` [LH Low, LH High]"
@@ -75,10 +90,10 @@ check env pc expr = case expr of
         l2 :@ eff2 :|> _ <- check env pc e2
         sat (l2 `elem` [LH Low, LH High]) "NotSat: l2 `elem` [LH Low, LH High]"
         let pc' = joins [l1, l2, pc]
-        _ :@ eff3 :|> _ <- check (M.insert x pc' env) pc' e3
+        _ :@ eff3 :|> _ <- check (M.insert (Left x) pc' env) pc' e3
         return $ LH Low :@ meets [eff1, eff2, eff3] :|> env
     (Var x) -> trace ("Var: " ++ show expr) $ do
-        l <- elookup x env
+        l <- elookup (Left x :: VarLab) env
         return $ l :@ Empty :|> env
     (B _) -> trace ("Bool: " ++ show expr) $ do
         return $ LH Low :@ Empty :|> env
@@ -87,7 +102,7 @@ check env pc expr = case expr of
     Unit -> trace ("Unit: " ++ show expr) $ do
         return $ LH Low :@ Empty :|> env
     (Abs x l e) -> trace ("Abs: " ++ show expr) $ do
-        l' :@ eff' :|> _ <- check (M.insert x l env) pc e
+        l' :@ eff' :|> _ <- check (M.insert (Left x) l env) pc e
         sat (pc `joinLeq` eff') "NotSat: pc <= eff'"
         return $ (l :-> (l' :@ eff')) :@ eff' :|> env
     (App e1 e2) -> trace ("App: " ++ show expr) $ do
@@ -111,15 +126,27 @@ check env pc expr = case expr of
         sat (l `elem` [Low, High]) "NotSat: l `elem` [Low, High]"
         return $ RefLH l :@ eff :|> env
     (Deref x) -> trace ("Deref: " ++ show expr) $ do
-        (RefLH l) <- elookup x env
+        (RefLH l) <- elookup (Left x :: VarLab) env
         return $ LH l :@ Empty :|> env
     (Assign x e) -> trace ("Assign: " ++ show expr) $ do
-        (RefLH l) <- elookup x env
+        (RefLH l) <- elookup (Left x :: VarLab) env
         l' :@ eff' :|> _ <- check env pc e
         sat (LH l == l') "NotSat: LH l == l'"
         sat (pc `joinLeq` LH l) "NotSat: pc <= LH l"
         return $ LH Low :@ (LH l /\ eff') :|> env
     (IfThen {}) -> error "IfThen: not implemented"
-    (Rec {}) -> error "Rec: not implemented"
+    (Rec fields) -> trace ("Record: " ++ show expr) $ do
+        let listFields = NE.toList fields
+        --Loop
+        let loop envLoop eff [] = return (envLoop, eff)
+            loop envLoop eff ((label_i, ei) : rest) = do
+                li :@ eff_i :|> _ <- check env pc ei
+                let updatedEnv = M.insert (Right label_i) li envLoop
+                let updatedEff = (eff_i /\ eff)
+                loop updatedEnv updatedEff rest
+
+        (env1, eff_min) <- loop M.empty Empty listFields
+        return $ Environment env1 :@ eff_min :|> env
+        -- data LevelTEnv = LevelT :|> Env deriving (Eq, Show)
     (Proj {}) -> error "Proj: not implemented"
     (Loc _) -> error "Loc: not implemented"

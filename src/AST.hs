@@ -1,3 +1,4 @@
+
 module AST where
 
 import Algebra.Lattice
@@ -7,7 +8,11 @@ import Data.Map qualified as M
 
 -- i don't think env needs locations, at least not for now
 -- type Env = M.Map (Either Variable Location) LevelT
-type Env = M.Map Variable LevelT
+-- type Env = M.Map Variable LevelT
+
+type Env = M.Map VarLab LevelT
+
+type VarLab = Either Variable Label
 
 data Expr
     = N Int
@@ -20,6 +25,8 @@ data Expr
     | Let Variable LevelT Expr
     | LetInf Variable Expr
     | BO BinOper Expr Expr
+    -- Rec Variable --||--
+    -- | Rec_Field (Label, Expr)
     | Rec (NE.NonEmpty (Label, Expr))
     | Proj Expr Label
     | IfThenElse Expr Expr Expr
@@ -43,7 +50,7 @@ instance Show Expr where
     show (Let x t e) = "let " ++ show x ++ "." ++ show t ++ " = " ++ show e
     show (LetInf x e) = "let " ++ show x ++ " = " ++ show e
     show (BO op e1 e2) = "(" ++ show e1 ++ " " ++ show op ++ " " ++ show e2 ++ ")"
-    show (Rec fs) = "{" ++ intercalate ", " (NE.toList $ NE.map (\(a, b) -> show a ++ " = " ++ show b) fs) ++ "}"
+    show (Rec fs) = "{" ++ intercalate ", " (NE.toList $ NE.map (\(a, b) -> show a ++ " : " ++ show b) fs) ++ "}"
     show (Proj e l) = show e ++ "." ++ show l
     show (IfThenElse e1 e2 e3) = "(if " ++ show e1 ++ " then " ++ show e2 ++ " else " ++ show e3 ++ ")"
     show (IfThen e1 e2) = "(if " ++ show e1 ++ " then " ++ show e2 ++ ")"
@@ -67,7 +74,7 @@ instance Show Location where
 data Label
     = LabelS String
     | LabelI Int
-    deriving (Eq)
+    deriving (Eq, Ord)
 
 instance Show Label where
     show (LabelS s) = s
@@ -95,6 +102,8 @@ data LevelT
     | LevelT :@ LevelT
     | LevelT :-> LevelT
     | Empty
+    | Environment Env
+    -- | RecordEnv (M.Map Label LevelT)
     deriving (Eq)
 
 data LevelTEnv = LevelT :|> Env deriving (Eq, Show)
@@ -105,13 +114,41 @@ instance Show LevelT where
     show (l1 :-> l2) = show l1 ++ "->" ++ show l2
     show (l1 :@ l2) = show l1 ++ "@" ++ show l2
     show Empty = "()"
+    show (Environment env) = show env 
 
 arity :: LevelT -> Int
 arity (_ :-> l2) = 1 + arity l2
 arity (l1 :@ l2) = arity l1 + arity l2
 arity _ = 0
 
+recordChecker :: LevelT -> LevelT
+recordChecker (Environment env) =  
+    let types = M.elems env
+        loop [] = Empty
+        loop (t:ts) = case t of
+            LH Low -> LH Low
+            Environment subEnv -> 
+                case recordChecker (Environment subEnv) of
+                    LH Low -> LH Low
+                    _      -> loop ts
+            _ -> loop ts
+    in loop types
+recordChecker _ = LH High
+   
+
 instance Lattice LevelT where
+    (Environment env) \/ (LH Low) = 
+        if recordChecker (Environment env) == LH Low
+            then LH Low
+            else LH High
+    (Environment _) \/ (LH High) = LH High
+    (LH Low) \/ (Environment env) = 
+        if recordChecker (Environment env) == LH Low
+            then LH Low
+            else LH High
+    (LH High) \/ (Environment _) = LH High
+    (Environment env1) \/ (Environment env2) = 
+        recordChecker (Environment env1) \/ recordChecker (Environment env2)
     (LH Low) \/ (LH Low) = LH Low
     (LH Low) \/ (LH High) = LH High
     (LH High) \/ (LH Low) = LH High
@@ -131,6 +168,22 @@ instance Lattice LevelT where
     (RefLH _) \/ _ = error "Cannot join a reference with a type"
     _ \/ (RefLH _) = error "Cannot join a reference with a type"
 
+
+
+    (Environment _) /\ (LH Low) = LH Low
+    (Environment env) /\ (LH High) = 
+        if recordChecker (Environment env) == LH Low
+            then LH Low
+            else LH High
+    (LH Low) /\ (Environment _) = LH Low
+    (LH High) /\ (Environment env) = 
+        if recordChecker (Environment env) == LH Low
+            then LH Low
+            else LH High
+    (Environment env) /\ Empty = recordChecker (Environment env)
+    Empty /\ (Environment env) = recordChecker (Environment env)
+    (Environment env1) /\ (Environment env2) = 
+        recordChecker (Environment env1) /\ recordChecker (Environment env2)
     (LH Low) /\ (LH Low) = LH Low
     (LH Low) /\ (LH High) = LH Low
     (LH Low) /\ Empty = LH Low

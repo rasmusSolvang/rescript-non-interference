@@ -6,6 +6,8 @@ import Text.Parsec.Language (emptyDef)
 import Text.Parsec.String (Parser)
 import Text.Parsec.Token qualified as Token
 
+import Data.List.NonEmpty qualified as NE
+
 languageDef :: Token.LanguageDef ()
 languageDef =
     emptyDef
@@ -34,11 +36,17 @@ lexer = Token.makeTokenParser languageDef
 identifier :: Parser String
 identifier = Token.identifier lexer
 
+-- label :: Parser String
+-- label = Token.identifier lexer
+
 reserved :: String -> Parser ()
 reserved = Token.reserved lexer
 
 parens :: Parser a -> Parser a
 parens = Token.parens lexer
+
+angles :: Parser a -> Parser a
+angles = Token.angles lexer
 
 braces :: Parser a -> Parser a
 braces = Token.braces lexer
@@ -51,6 +59,13 @@ whiteSpace = Token.whiteSpace lexer
 
 semi :: Parser String
 semi = Token.semi lexer
+
+comma :: Parser String
+comma = Token.comma lexer
+
+colon :: Parser String
+colon = Token.colon lexer
+
 
 parseInput :: String -> Either ParseError Expr
 parseInput = parse (whiteSpace >> seqExpressions) ""
@@ -65,6 +80,7 @@ expression :: Parser Expr
 expression =
     whiteSpace
         *> ( try letExpr
+                <|> try record
                 <|> try assign
                 <|> try ifThenElse
                 <|> try while
@@ -78,6 +94,34 @@ expression =
                 <|> try boolean
                 <|> variable
            )
+
+-- {e_1; e_2; e_3}
+-- Expression on the form l_1 : e_1
+-- Returns a record, that has the body of a list of tuples 
+record :: Parser Expr
+record = 
+    do
+        body <- braces record_fields
+        return $ body
+
+
+-- Returns a list of tuples containing (Label, Expr)
+record_fields :: Parser Expr
+record_fields = 
+    do
+        exprs <- assign_record `sepBy1` comma
+        return $ Rec (NE.fromList exprs)
+        
+
+-- Returns a tuple of a labelIdentifier (string) and the corrosponding expression
+-- Note it is not possible to explicit assign a security type to a label
+assign_record :: Parser (Label, Expr)
+assign_record = 
+    do
+        name <- identifier
+        _ <- colon
+        expr <- expression
+        return $ (LabelS name, expr)
 
 number :: Parser Expr
 number = N . fromIntegral <$> integer
@@ -110,8 +154,9 @@ letExpr = try explicit <|> infer
         explicit = do
             reserved "let"
             name <- identifier
-            _ <- char ':'
+            _ <- char '<'
             level <- try low <|> try high <|> try refLow <|> refHigh
+            _ <- char '>'
             _ <- spaces *> char '=' <* spaces
             Let (V name) level <$> expression
         infer = do
@@ -160,8 +205,9 @@ abstraction :: Parser Expr
 abstraction = do
     _ <- char '('
     name <- identifier
-    _ <- char ':'
+    _ <- char '<'
     level <- try low <|> try high <|> try refLow <|> refHigh
+    _ <- char '>'
     _ <- char ')'
     _ <- spaces *> string "=>" <* spaces
     body <- braces seqExpressions
@@ -180,6 +226,7 @@ binaryOperation = do
     left <- expression
     spaces
     BO op left <$> expression
+
 
 
 low :: Parser LevelT
