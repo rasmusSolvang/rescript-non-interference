@@ -5,7 +5,6 @@ import Algebra.Lattice
 import Data.List (intercalate)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
-import Debug.Trace (trace)
 
 -- i don't think env needs locations, at least not for now
 -- type Env = M.Map (Either Variable Location) LevelT
@@ -16,34 +15,34 @@ type Env = M.Map VarLab LevelT
 type VarLab = Either Variable Label
 
 data Expr
-    = N Int
-    | B Bool
-    | Unit
-    | Var Variable
-    | App Expr Expr
-    | Abs Variable LevelT Expr
-    | Seq Expr Expr
-    | Let Variable LevelT Expr
-    | LetInf Variable Expr
-    | BO BinOper Expr Expr
-    | Rec_Field Expr Label
-    | Rec (NE.NonEmpty (Label, Expr))
-    | Proj Expr Label
-    | IfThenElse Expr Expr Expr
-    | IfThen Expr Expr
-    | While Expr Expr
-    | For Variable Expr Expr Expr
-    | Loc Location
-    | Ref Expr
-    | Deref Variable
-    | Assign Variable Expr
-    deriving (Eq)
+  = N Int |
+    B Bool |
+    Unit |
+    Var Variable |
+    App Expr Expr |
+    Abs Variable LevelT Expr |
+    Seq Expr Expr |
+    Let Variable LevelT Expr    |
+    LetInf Variable Expr |
+    BO BinOper Expr Expr |
+    RecField Expr Label |
+    Rec (NE.NonEmpty (Label, Expr)) |
+    Proj Expr Label |
+    IfThenElse Expr Expr Expr |
+    IfThen Expr Expr |
+    While Expr Expr |
+    For Variable Expr Expr Expr |
+    Loc Location |
+    Ref Expr |
+    Deref Variable |
+    Assign Variable Expr
+  deriving (Eq)
 
 instance Show Expr where
     show (N n) = show n
     show (B b) = show b
     show Unit = "()"
-    show (Rec_Field r l) = show r ++ "." ++ show l
+    show (RecField r l) = show r ++ "." ++ show l
     show (Var x) = show x
     show (App e1 e2) = show e1 ++ "(" ++ show e2 ++ ")"
     show (Abs x t e) = "(\\" ++ show x ++ "." ++ show t ++ "->" ++ show e ++ ")"
@@ -122,32 +121,28 @@ arity :: LevelT -> Int
 arity (_ :-> l2) = 1 + arity l2
 arity (l1 :@ l2) = arity l1 + arity l2
 arity _ = 0
-
 recordChecker :: LevelT -> LevelT
 recordChecker (Environment env1) =
-  trace ("recordChecker called with env: " ++ show (env1)) $
-  let types = M.elems env1
-  in checkTypes types
+  checkTypes (M.elems env1)
   where
+    checkTypes :: [LevelT] -> LevelT
     checkTypes [] = LH High
     checkTypes (t:ts) = 
       case t of
-        LH Low -> LH Low
-        RefLH Low -> LH Low
+        LH Low       -> LH Low
+        RefLH Low    -> LH Low
         Environment subEnv ->
-          trace ("Descending into subEnv: " ++ show subEnv) $
-
-          let subResult = recordChecker (Environment subEnv)
-          in if subResult == LH Low then LH Low else checkTypes ts
+          case recordChecker (Environment subEnv) of
+            LH Low -> LH Low
+            _      -> checkTypes ts
         _ -> checkTypes ts
-
 recordChecker (LH Low) = LH Low
-recordChecker _ = LH High
+recordChecker _        = LH High
 
 instance Lattice LevelT where
-    (Environment env) \/ (LH Low) = LH Low 
+    (Environment env) \/ (LH Low) = recordChecker (Environment env) 
     (Environment _) \/ (LH High) = LH High
-    (LH Low) \/ (Environment env) = LH Low
+    (LH Low) \/ (Environment env) = recordChecker (Environment env)
     
     (LH High) \/ (Environment _) = LH High
     (Environment env1) \/ (Environment env2) = 
@@ -173,12 +168,12 @@ instance Lattice LevelT where
 
 
     (Environment _) /\ (LH Low) = LH Low
-    (Environment env) /\ (LH High) = LH Low
+    (Environment env) /\ (LH High) = recordChecker (Environment env)
     (LH Low) /\ (Environment _) = LH Low
-    (LH High) /\ (Environment env) = LH Low
+    (LH High) /\ (Environment env) = recordChecker (Environment env)
     
-    (Environment env) /\ Empty = LH Low
-    Empty /\ (Environment env) = LH Low
+    (Environment env) /\ Empty = recordChecker (Environment env)
+    Empty /\ (Environment env) = recordChecker (Environment env)
     (Environment env1) /\ (Environment env2) = 
         recordChecker (Environment env1) /\ recordChecker (Environment env2)
     (LH Low) /\ (LH Low) = LH Low

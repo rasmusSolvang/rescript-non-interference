@@ -1,0 +1,11 @@
+--Should fail, because the effect of the function is low but the security context is high
+
+let i<L> = 1;
+let l = ref(i);
+let h<H> = 2;
+
+let f = (x<H>) => {l:=2};
+if (h) 
+{let r = {x1 :  f(h); 3}} 
+else 
+{let r = {x1 :  f(h); 3}}

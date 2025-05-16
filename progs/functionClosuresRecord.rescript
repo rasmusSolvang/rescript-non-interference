@@ -1,0 +1,3 @@
+let add = (x<L>) => {(x + 1)};
+let r = {x1 : add}
+let x2 = r.x1(3)

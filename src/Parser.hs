@@ -81,6 +81,7 @@ expression =
     whiteSpace
         *> ( try letExpr
                 <|> try record
+                -- <|> try recordField
                 <|> try assign
                 <|> try ifThenElse
                 <|> try while
@@ -101,36 +102,36 @@ expression =
 -- Returns a record, that has the body of a list of tuples 
 record :: Parser Expr
 record = 
-    do
-        body <- braces record_fields
-        return $ body
+    do braces recordFields
+     
 
 
 -- Returns a list of tuples containing (Label, Expr)
-record_fields :: Parser Expr
-record_fields = 
+recordFields :: Parser Expr
+recordFields = 
     do
-        exprs <- assign_record `sepBy1` comma
+        exprs <- assignRecord `sepBy1` comma
         return $ Rec (NE.fromList exprs)
         
 
 -- Returns a tuple of a labelIdentifier (string) and the corresponding expression
 -- Note it is not possible to explicit assign a security type to a label
-assign_record :: Parser (Label, Expr)
-assign_record = 
+assignRecord :: Parser (Label, Expr)
+assignRecord = 
     do
         name <- identifier
         _ <- colon
         expr <- seqExpressions
-        return $ (LabelS name, expr)
-        
-record_field :: Parser Expr
-record_field = 
-    do 
-        record_ <- expression
-        _ <- char '.'
-        field_name <- identifier
-        return $ Rec_Field record_ (LabelS field_name)
+        return (LabelS name, expr)
+--CURRENTLY LOOPS IFINITELY DUE TO "record_ <- expression"
+recordField :: Parser Expr
+recordField = do 
+    record_ <- expression
+    _ <- char '.'
+    RecField record_ . LabelS <$> identifier
+-- (a.(b.c))
+  
+
 
 number :: Parser Expr
 number = N . fromIntegral <$> integer

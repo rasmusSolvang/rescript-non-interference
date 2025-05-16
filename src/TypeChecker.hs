@@ -24,7 +24,7 @@ elookup varlab env = case varlab of
             case M.lookup (Right l) env of
             Just t -> return t
             Nothing -> do
-                let msg = "Variable " ++ show l ++ " not found in environment"
+                let msg = "Label " ++ show l ++ " not found in environment"
                 modify (++ [msg])
                 fail msg
 
@@ -135,25 +135,38 @@ check env pc expr = case expr of
         sat (pc `joinLeq` LH l) "NotSat: pc <= LH l"
         return $ LH Low :@ (LH l /\ eff') :|> env
     (IfThen {}) -> error "IfThen: not implemented"
-    (Rec expression) -> trace ("Record: " ++ show expr) $ do
+    (Rec expression) -> trace ("Record: " ++ show (Rec expression)) $ do
         let listFields = NE.toList expression
-        --Loop
-        let loop envLoop eff [] = return (envLoop, eff)
-            loop envLoop eff ((label_i, ei) : rest) = do
-                ti :@ eff_i :|> _ <- check env pc ei -- 
-                --sat (pc `joinLeq` ti) ("NotSat pc <= t_i, t_i: " ++ show ti ++ "pc: " ++ show pc ++ "ei : " ++ show ei)
-                let updatedEnv = M.insert (Right label_i) ti envLoop
-                let updatedEff = (eff_i /\ eff)
-                loop updatedEnv updatedEff rest
 
-        (env1, eff_min) <- loop M.empty Empty listFields
-        return $ Environment env1 :@ eff_min :|> env
-        -- data LevelTEnv = LevelT :|> Env deriving (Eq, Show)
-    (Rec_Field e l) -> trace ("Record Field : " ++ show e ++ "." ++ show l) $ do
-         Environment gamma :@ eff :|> _ <- check env pc e
-         (t) <- elookup (Right l :: VarLab) gamma
-         sat (pc `joinLeq` eff) "NotSat pc <= eff"
-         return $ t :@ eff :|> env
+        let loop gamma eff [] = return (Environment gamma, eff)
+            loop gamma eff ((label_i, expr_i) : rest) = do
+                t_i :@ eff_i :|> _ <- check env pc expr_i
+
+                case t_i of
+                    -- If it's a nested record (Environment), wrap it as-is
+                    Environment subEnv -> do
+                        let newGamma = M.insert (Right label_i) (Environment subEnv) gamma
+                        let newEff = eff_i /\ eff
+                        loop newGamma newEff rest
+
+                    -- Otherwise, treat it as a regular value and enforce pc <= t_i
+                    _ -> do
+                        sat (pc `joinLeq` t_i) $
+                            "NotSat pc <= t_i, t_i: " ++ show t_i ++ ", pc: " ++ show pc ++ ", expr: " ++ show expr_i
+                        let newGamma = M.insert (Right label_i) t_i gamma
+                        let newEff = eff_i /\ eff
+                        loop newGamma newEff rest
+
+        (envResult, effResult) <- loop M.empty Empty listFields
+        return $ envResult :@ effResult :|> env
+    (RecField e l) -> trace ("Record Field: " ++ show e ++ "." ++ show l) $ do
+        Environment gamma :@ eff :|> _ <- check env pc e
+        
+        t <- elookup (Right l :: VarLab) gamma
+        trace ("Looked up field '" ++ show l ++ "' with type: " ++ show t) $ do
+            sat (pc `joinLeq` eff) "NotSat pc <= eff"
+            return $ t :@ eff :|> env
+
          
 
     (Proj {}) -> error "Proj: not implemented"

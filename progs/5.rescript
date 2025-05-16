@@ -1,3 +1,7 @@
-let l<L> = 1;
-let h<H> = 2;
-let r = {x1:l, x2 : {x3 : {x4: 1, x5: 9}}}
+let h<H> = 1;
+let r = {x1 : h}
+if (r.x1) {
+    let l<L> = 1;
+} else {
+    let l<L> = 2;
+}
