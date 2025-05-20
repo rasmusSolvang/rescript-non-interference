@@ -1,0 +1,2 @@
+-- Simple example of it working
+let r = {x1<H> : 1, x2 : 2}

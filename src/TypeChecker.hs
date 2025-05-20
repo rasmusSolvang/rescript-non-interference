@@ -117,11 +117,21 @@ check env pc expr = case expr of
                 sat (l1' == l2) "NotSat: l1' == l2"
                 return $ l2' :@ eff :|> env
             t -> fail $ "App: not a function type: " ++ show t
-    (BO _ e1 e2) -> trace ("BO: " ++ show expr) $ do
+    (BOA _ e1 e2) -> trace ("BO: " ++ show expr) $ do
         l1 :@ eff1 :|> _ <- check env pc e1
         l2 :@ eff2 :|> _ <- check env pc e2
         sat (l1 `elem` [LH Low, LH High]) "NotSat: l1 `elem` [LH Low, LH High]"
         sat (l2 `elem` [LH Low, LH High]) "NotSat: l2 `elem` [LH Low, LH High]"
+        return $ (l1 \/ l2) :@ (eff1 /\ eff2) :|> env
+    (BOL _ e1 e2) -> trace ("BO: " ++ show expr) $ do
+        l1 :@ eff1 :|> _ <- check env pc e1
+        l2 :@ eff2 :|> _ <- check env pc e2
+        case l1 of
+            LH _ -> do sat (l2 `elem` [LH Low, LH High]) "NotSat: l2 `elem` [LH Low, LH High]"
+            Environment _ -> do sat (l2 == Environment env) "NotSat: l2 `elem` [Environment env]"
+            RefLH _ -> do  sat (l2 `elem` [RefLH Low, RefLH High]) "NotSat: l2 `elem` [RefLH Low, RefLH High]"
+            Empty -> do sat (l2 `elem` [Empty]) "NotSat: l2 `elem` [Empty]"
+            _ -> error ("Type of e1 is not valid in logic operation")
         return $ (l1 \/ l2) :@ (eff1 /\ eff2) :|> env
     (Ref e) -> trace ("Ref: " ++ show expr) $ do
         (LH l) :@ eff :|> _ <- check env pc e
@@ -141,7 +151,23 @@ check env pc expr = case expr of
         let listFields = NE.toList expression
 
         let loop gamma eff [] = return (Environment gamma, eff)
-            loop gamma eff ((label_i, expr_i) : rest) = do
+            loop gamma eff (Right (label_i, levelt_i, expr_i) : rest) = do
+                t_i :@ eff_i :|> _ <- check env pc expr_i
+                case t_i of
+                    -- If it's a nested record (Environment), wrap it as-is
+                    Environment _ -> do
+                        error "A record cannot be explicitly typed"
+
+                    -- Otherwise, treat it as a regular value and enforce pc <= t_i
+                    _ -> do
+                        sat (levelt_i `elem` [LH Low, LH High]) "NotSat: levelt_i `elem` [LH Low, LH High]"
+                        sat (t_i`joinLeq` levelt_i) "NotSat levelt_i <= t_i"
+                        sat (pc `joinLeq` t_i) $
+                            "NotSat pc <= t_i, t_i: " ++ show t_i ++ ", pc: " ++ show pc ++ ", expr: " ++ show expr_i
+                        let newGamma = M.insert (Right label_i) levelt_i gamma
+                        let newEff = eff_i /\ eff
+                        loop newGamma newEff rest
+            loop gamma eff (Left (label_i, expr_i) : rest) = do
                 t_i :@ eff_i :|> _ <- check env pc expr_i
 
                 case t_i of

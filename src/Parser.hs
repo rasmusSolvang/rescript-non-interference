@@ -116,13 +116,24 @@ recordFields =
 
 -- Returns a tuple of a labelIdentifier (string) and the corresponding expression
 -- Note it is not possible to explicit assign a security type to a label
-assignRecord :: Parser (Label, Expr)
-assignRecord = 
-    do
-        name <- identifier
-        _ <- colon
-        expr <- seqExpressions
-        return (LabelS name, expr)
+
+assignRecord :: Parser (Either (Label, Expr) (Label, LevelT, Expr))
+assignRecord = try explicit <|> infer
+    where
+        explicit = do
+            name <- identifier
+            _ <- char '<'
+            level <- try low <|> try high <|> try refLow <|> refHigh
+            _ <- char '>'
+            spaces
+            _ <- colon
+            expr <- seqExpressions
+            return (Right (LabelS name, level, expr))
+        infer = do
+            name <- identifier
+            _ <- colon
+            expr <- seqExpressions
+            return (Left (LabelS name, expr))
 
 --CURRENTLY LOOPS IFINITELY DUE TO "record_ <- expression"
 -- Tror det kan virke hvis vi skriver:
@@ -240,21 +251,36 @@ application = do
 
 binaryOperation :: Parser Expr
 binaryOperation = parens $ do
-    left <- expression
-    spaces
-    op <- binaryOperator
-    spaces
-    right <- expression
-    return $ BO op left right
+    try arim <|> logic
+        where 
+            arim = do
+                left <- expression
+                spaces
+                op <- binaryOperatorA
+                spaces
+                right <- expression
+                return $ BOA op left right
+            logic = do
+                left <- expression
+                spaces
+                op <- binaryOperatorL
+                spaces
+                right <- expression
+                return $ BOL op left right
 
 -- Binary operator parser stays the same
-binaryOperator :: Parser BinOper
-binaryOperator = 
+binaryOperatorL :: Parser BinOper
+binaryOperatorL = 
+   (string "==" >> return Eql)
+  <|> (string ">" >> return Lt)
+  <|> (string "<" >> return Gt)
+binaryOperatorA :: Parser BinOper
+binaryOperatorA = 
       (char '+' >> return Add)
   <|> (char '-' >> return Sub)
   <|> (char '*' >> return Mul)
   <|> (char '/' >> return Div)
-  <|> (string "==" >> return Eql)
+
 
 
 -- cabal run exes -- progs/4.rescript

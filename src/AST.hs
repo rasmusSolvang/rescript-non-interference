@@ -25,9 +25,14 @@ data Expr
     Seq Expr Expr |
     Let Variable LevelT Expr    |
     LetInf Variable Expr |
-    BO BinOper Expr Expr |
+    BOL BinOper Expr Expr |
+    BOA BinOper Expr Expr |
+
     RecField Expr Label |
-    Rec (NE.NonEmpty (Label, Expr)) |
+    
+    -- RecFieldExp Expr LevelT Label
+    -- Rec (Ne.NonEmpty (Either RecFieldInf RecFieldExplic))
+    Rec (NE.NonEmpty (Either (Label, Expr) (Label, LevelT, Expr))) |
     Proj Expr Label |
     IfThenElse Expr Expr Expr |
     IfThen Expr Expr |
@@ -50,8 +55,13 @@ instance Show Expr where
     show (Seq e1 e2) = show e1 ++ ";" ++ show e2
     show (Let x t e) = "let " ++ show x ++ "." ++ show t ++ " = " ++ show e
     show (LetInf x e) = "let " ++ show x ++ " = " ++ show e
-    show (BO op e1 e2) = "(" ++ show e1 ++ " " ++ show op ++ " " ++ show e2 ++ ")"
-    show (Rec fs) = "{" ++ intercalate ", " (NE.toList $ NE.map (\(a, b) -> show a ++ " : " ++ show b) fs) ++ "}"
+    show (BOA op e1 e2) = "(" ++ show e1 ++ " " ++ show op ++ " " ++ show e2 ++ ")"
+    show (BOL op e1 e2) = "(" ++ show e1 ++ " " ++ show op ++ " " ++ show e2 ++ ")"
+
+    show (Rec fs) = "{" ++ intercalate ", " (NE.toList $ NE.map showField fs) ++ "}"
+        where
+            showField (Left (a, b))       = show a ++ " : " ++ show b
+            showField (Right (a, levelt, b)) = show a ++ "<" ++ show levelt ++ ">" ++" : "  ++ show b
     show (Proj e l) = show e ++ "." ++ show l
     show (IfThenElse e1 e2 e3) = "(if " ++ show e1 ++ " then " ++ show e2 ++ " else " ++ show e3 ++ ")"
     show (IfThen e1 e2) = "(if " ++ show e1 ++ " then " ++ show e2 ++ ")"
@@ -81,7 +91,7 @@ instance Show Label where
     show (LabelS s) = s
     show (LabelI i) = show i
 
-data BinOper = Add | Sub | Mul | Div | Eql
+data BinOper = Add | Sub | Mul | Div | Eql | Lt | Gt
     deriving (Eq)
 
 instance Show BinOper where
@@ -90,6 +100,9 @@ instance Show BinOper where
     show Mul = "*"
     show Div = "/"
     show Eql = "=="
+    show Lt = ">"
+    show Gt = "<"
+
 
 data LowHigh = Low | High deriving (Eq)
 
