@@ -117,7 +117,6 @@ data LevelT
     | LevelT :-> LevelT
     | Empty
     | Environment Env
-    -- | RecordEnv (M.Map Label LevelT)
     deriving (Eq)
 
 data LevelTEnv = LevelT :|> Env deriving (Eq, Show)

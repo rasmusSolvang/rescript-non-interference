@@ -1,3 +1,8 @@
-let r1 = {x1 : 1};
-let r2 = {x1 : 1};
-let b = (r1 == r2)
+let rec1 = {x1 : 1};
+let rec2 = {x1 : 1};
+let b = (rec1 == rec2);
+let ref1 = ref(1);
+let ref2 = ref(1);
+let b = (ref1 == ref2);
+let u = ();
+let b = (unit == unit)

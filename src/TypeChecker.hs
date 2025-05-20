@@ -128,10 +128,10 @@ check env pc expr = case expr of
         l2 :@ eff2 :|> _ <- check env pc e2
         case l1 of
             LH _ -> do sat (l2 `elem` [LH Low, LH High]) "NotSat: l2 `elem` [LH Low, LH High]"
-            Environment _ -> do sat (l2 == Environment env) "NotSat: l2 `elem` [Environment env]"
+            Environment l1' -> do sat (Environment l1' == l2) "NotSat: l2 `elem` [Environment env]"
             RefLH _ -> do  sat (l2 `elem` [RefLH Low, RefLH High]) "NotSat: l2 `elem` [RefLH Low, RefLH High]"
-            Empty -> do sat (l2 `elem` [Empty]) "NotSat: l2 `elem` [Empty]"
-            _ -> error ("Type of e1 is not valid in logic operation")
+            Empty -> do sat (l2 == Empty) "NotSat: l2 `elem` [Empty]"
+            _ -> error "Type of e1 is not valid in logic operation"
         return $ (l1 \/ l2) :@ (eff1 /\ eff2) :|> env
     (Ref e) -> trace ("Ref: " ++ show expr) $ do
         (LH l) :@ eff :|> _ <- check env pc e
