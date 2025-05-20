@@ -5,6 +5,7 @@ import Algebra.Lattice
 import Data.List (intercalate)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
+import Debug.Trace
 
 -- i don't think env needs locations, at least not for now
 -- type Env = M.Map (Either Variable Location) LevelT
@@ -121,21 +122,24 @@ arity :: LevelT -> Int
 arity (_ :-> l2) = 1 + arity l2
 arity (l1 :@ l2) = arity l1 + arity l2
 arity _ = 0
+
 recordChecker :: LevelT -> LevelT
 recordChecker (Environment env1) =
-  checkTypes (M.elems env1)
-  where
-    checkTypes :: [LevelT] -> LevelT
-    checkTypes [] = LH High
-    checkTypes (t:ts) = 
-      case t of
-        LH Low       -> LH Low
-        RefLH Low    -> LH Low
-        Environment subEnv ->
-          case recordChecker (Environment subEnv) of
-            LH Low -> LH Low
-            _      -> checkTypes ts
-        _ -> checkTypes ts
+    trace ("Checking environment: " ++ show env1) $
+
+    checkTypes (M.elems env1)
+    where
+        checkTypes :: [LevelT] -> LevelT
+        checkTypes [] = trace "No low found" $ LH High
+        checkTypes (t:ts) = 
+            case t of
+                LH Low -> trace "Found LH Low" $ LH Low
+                RefLH Low -> trace "Found RefLH Low" $ LH Low
+                Environment subEnv -> 
+                    case recordChecker (Environment subEnv) of
+                        LH Low -> trace "Nested environment contains LH Low" $ LH Low
+                        _      -> checkTypes ts
+                _ -> checkTypes ts
 recordChecker (LH Low) = LH Low
 recordChecker _        = LH High
 

@@ -1,0 +1,9 @@
+let l<L> = 1;
+let h<H> = true;
+let r = {x1 : {x2 : 1}};
+
+if (h) {
+    let y = (r).x1
+} else {
+    let y = (r).x1
+}

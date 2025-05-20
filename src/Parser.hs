@@ -81,7 +81,7 @@ expression =
     whiteSpace
         *> ( try letExpr
                 <|> try record
-                -- <|> try recordField
+                <|> try recordField
                 <|> try assign
                 <|> try ifThenElse
                 <|> try while
@@ -123,12 +123,21 @@ assignRecord =
         _ <- colon
         expr <- seqExpressions
         return (LabelS name, expr)
+
 --CURRENTLY LOOPS IFINITELY DUE TO "record_ <- expression"
+-- Tror det kan virke hvis vi skriver:
+-- a.b.c -> ((a).b).c -> så parser dem som følger: 
+--  (((a).b).c) -> ((a).b) -> (a).b, rec ->
+-- RecF E L -> RecF (RecF (RecF a b) c) d
+-- Det vi reeltset skriver er at for at være en dot nation af records er følgende gældende:
+-- Envs (Records) skal være i () og efterfulgt af en parentes kommer der så ét .
+-- Tingene efter et punktum er labels
 recordField :: Parser Expr
-recordField = do 
-    record_ <- expression
+recordField = do
+    record_ <- parens expression
     _ <- char '.'
-    RecField record_ . LabelS <$> identifier
+    name <- identifier
+    return $ RecField record_ (LabelS name)
 -- (a.(b.c))
   
 

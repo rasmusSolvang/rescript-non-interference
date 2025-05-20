@@ -53,7 +53,9 @@ check env pc expr = case expr of
             RefLH l' -> do
                 sat (pc `joinLeq` LH l') "NotSat: pc <= LH l'"
                 return $ LH Low :@ (LH l' /\ eff) :|> M.insert (Left x) (RefLH l') env
-            Environment l' -> trace ("PC:" ++ show pc ++ "Eff" ++ show eff) $ do
+            Environment l' -> trace ("PC:" ++ show pc ++ " rec: "++ show (Environment l') ++ " Eff: " ++ show eff) $ do
+                let recordType = recordChecker (Environment l')
+                sat (pc `joinLeq` recordType) "NotSat: pc <= l"
                 sat (pc `joinLeq` eff) "NotSat: pc <= t1, TEST"
                 return $ LH Low :@ (eff /\ pc) :|> M.insert (Left x) (Environment l') env
             t1 -> do
