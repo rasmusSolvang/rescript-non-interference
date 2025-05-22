@@ -1,0 +1,11 @@
+-- This should fail, since we bind a low label in a high security context
+-- cabal run exes testsuits/tiNotOrderedPC.rescript
+let h<H> = true;
+if (h) 
+    {
+        let r = {l : 1}
+    }
+else 
+    {
+        let r = {l : 2}
+    }

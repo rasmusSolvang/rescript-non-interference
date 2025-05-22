@@ -1,0 +1,23 @@
+-- cabal run exes testsuits/RecordEffectIsMeet.rescript
+-- Tests that the effect of a record expression is the (⊓) of field effects.
+-- What is done is the following: A record with two fields are created, hence l1: Low@Low, l2:High@High
+-- Then next, in a high security context the record field with Low@Low is called. 
+-- This should then be disallowed because the effect of the record is low, thus disallowing the let binding.
+let l = ref(1);
+let h<H> = 1;
+let rh = ref(1); 
+
+
+
+let r = {l1 : 
+if (true) {l:=2} 
+else {l:=3} ; 3, 
+        l2 : 
+if (h) {let h1<H> = 10} 
+else {let h1<H> = 10}; 4};
+
+if (h) {
+    let x = (r).l1
+} else {
+    let x = (r).l1
+}

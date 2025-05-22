@@ -1,0 +1,12 @@
+-- cabal run exes testsuits/gamma1NotOrdered.rescript
+-- This should fail, because a record with a low label is trying to be bound in a high security context. 
+-- It fails due to the constraint  pc <= Gamma_1.
+
+
+let r = {l1: {l2 : 1}};
+let h<H> = true;
+if (h) {
+    let x = (r).l1
+} else {
+    let x = (r).l1
+}

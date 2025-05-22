@@ -1,0 +1,15 @@
+-- cabal run exes testsuits/RecordFieldEffectOrdering.rescript
+-- Record field was created at lower pc-thus field is low. 
+-- Should failt because it cannot be utilized in a high security context
+let l<L> = 1;
+let r = {l : 42};
+let h<H> = true;
+
+if (h) {
+    let h1 = (r).l
+} else {
+    let h1 = (r).l
+}
+
+
+

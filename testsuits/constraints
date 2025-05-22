@@ -1,0 +1,14 @@
+Let
+
+t1 ⊒ pc -> tiNotOrderedPC
+Γ1 ⊒ pc -> gamma1NotOrdered
+t2 = ⊓{t1,pc} -> recordExpEffectHandled
+
+Exp
+ti /∈ {t → t} -> AbstractionDisallowed
+ti ⊒ pc -> tiNotOrderedPC
+ti+k+1 = ⊓{tj+k |1 ≤ j ≤ k} -> RecordEffectIsMeet
+
+field
+Γ3(l) = t2 -> RecordFieldEffectOrdering
+t1 ⊒ pc -> RecordEffectIsMeet

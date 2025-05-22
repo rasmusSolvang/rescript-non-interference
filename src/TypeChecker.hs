@@ -56,7 +56,7 @@ check env pc expr = case expr of
             Environment l' -> trace ("PC:" ++ show pc ++ " rec: "++ show (Environment l') ++ " Eff: " ++ show eff) $ do
                 let recordType = recordChecker (Environment l')
                 sat (pc `joinLeq` recordType) "NotSat: pc <= l"
-                sat (pc `joinLeq` eff) "NotSat: pc <= t1, TEST"
+                sat (pc `joinLeq` eff) "NotSat: pc <= t1"
                 return $ LH Low :@ (eff /\ pc) :|> M.insert (Left x) (Environment l') env
             t1 -> do
                 sat (t1 `elem` [LH Low, LH High]) "NotSat: t1 `elem` [LH Low, LH High]"
@@ -152,32 +152,24 @@ check env pc expr = case expr of
 
         let loop gamma eff [] = return (Environment gamma, eff)
             loop gamma eff (Right (label_i, levelt_i, expr_i) : rest) = do
+                sat (levelt_i `elem` [LH Low, LH High]) "NotSat: levelt_i `elem` [LH Low, LH High]"
                 t_i :@ eff_i :|> _ <- check env pc expr_i
                 case t_i of
-                    -- If it's a nested record (Environment), wrap it as-is
                     Environment _ -> do
                         error "A record cannot be explicitly typed"
-
-                    -- Otherwise, treat it as a regular value and enforce pc <= t_i
                     _ -> do
-                        sat (levelt_i `elem` [LH Low, LH High]) "NotSat: levelt_i `elem` [LH Low, LH High]"
                         sat (t_i`joinLeq` levelt_i) "NotSat levelt_i <= t_i"
-                        sat (pc `joinLeq` t_i) $
-                            "NotSat pc <= t_i, t_i: " ++ show t_i ++ ", pc: " ++ show pc ++ ", expr: " ++ show expr_i
+                        sat (pc `joinLeq` t_i) "NotSat pc <= t_i"
                         let newGamma = M.insert (Right label_i) levelt_i gamma
                         let newEff = eff_i /\ eff
                         loop newGamma newEff rest
             loop gamma eff (Left (label_i, expr_i) : rest) = do
                 t_i :@ eff_i :|> _ <- check env pc expr_i
-
                 case t_i of
-                    -- If it's a nested record (Environment), wrap it as-is
                     Environment subEnv -> do
                         let newGamma = M.insert (Right label_i) (Environment subEnv) gamma
                         let newEff = eff_i /\ eff
                         loop newGamma newEff rest
-
-                    -- Otherwise, treat it as a regular value and enforce pc <= t_i
                     _ -> do
                         sat (pc `joinLeq` t_i) $
                             "NotSat pc <= t_i, t_i: " ++ show t_i ++ ", pc: " ++ show pc ++ ", expr: " ++ show expr_i

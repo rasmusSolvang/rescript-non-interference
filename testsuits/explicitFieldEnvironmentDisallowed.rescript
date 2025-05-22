@@ -1,0 +1,4 @@
+-- Should fail, as there explcicitly typed fields cannot be environements.
+-- cabal run exes testsuits/explicitFieldEnvironmentDisallowed.rescript
+
+let r = {l1<L> : {l2 : 1}}

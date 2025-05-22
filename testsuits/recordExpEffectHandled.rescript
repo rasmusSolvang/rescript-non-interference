@@ -1,0 +1,15 @@
+-- cabal run exes testsuits/recordExpEffectHandled.rescript
+--  {x : let l<L> = 1; h} with type Gamma@L, but it is ordered as high.
+-- let r thus has type L@L
+-- This shows, that the effect of the left binding is the greatest lower bound as the PC is high, but the effect of r is low.
+-- Thus dissallowing the binding.
+
+let h<H> = 1;
+let l<L> = 1;
+let lr = ref(l);
+
+if (h) {
+    let r = {x : lr:=2; h}
+} else {
+    let r = {x : lr:=2; h}
+}

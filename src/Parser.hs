@@ -123,7 +123,7 @@ assignRecord = try explicit <|> infer
         explicit = do
             name <- identifier
             _ <- char '<'
-            level <- try low <|> try high <|> try refLow <|> refHigh
+            level <- try low <|> try high <|> try refLow <|> try refHigh
             _ <- char '>'
             spaces
             _ <- colon

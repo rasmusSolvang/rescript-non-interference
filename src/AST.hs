@@ -29,9 +29,6 @@ data Expr
     BOA BinOper Expr Expr |
 
     RecField Expr Label |
-    
-    -- RecFieldExp Expr LevelT Label
-    -- Rec (Ne.NonEmpty (Either RecFieldInf RecFieldExplic))
     Rec (NE.NonEmpty (Either (Label, Expr) (Label, LevelT, Expr))) |
     Proj Expr Label |
     IfThenElse Expr Expr Expr |
