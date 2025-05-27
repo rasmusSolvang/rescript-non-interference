@@ -1,0 +1,23 @@
+-- This should pass, as all expressions are validly typed. 
+-- If this pass a range of let record, record expr and record field expressions are tested.
+-- cabal run exes testsuits/recordNormalExpr.rescript
+-- Enkelt cases
+let record1 = {l : 1};
+let record2 = {l<L> : 1};
+-- Mixed cases
+let record3 = {l : 1, h<H> : 2};
+-- Nested cases
+let record4 = {l : {l2 : 1}, h : 2};
+let record5 = {l : {l2<L> : 1}, h<H> : 2};
+let record6 = {l : {l2 : 1}, h<H> : 2};
+-- Field cases
+let f1 = (record1).l;
+let f2 = (record2).l;
+let f3 = (record3).h;
+let f4 = (record4).h;
+let f5 = ((record5).l).l2;
+let f6 = (record6).h;
+
+-- Record with record fields
+let record7 = {l : {l2 : f1}, h<H> : f3}
+

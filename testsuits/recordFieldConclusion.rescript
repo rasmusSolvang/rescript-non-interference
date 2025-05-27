@@ -1,0 +1,17 @@
+-- cabal run exes testsuits/recordFieldConclusion.rescript
+-- As the if(h) statement sets the pc to high, the let binding should fail
+-- This shows that the return from the record field is correct. 
+-- The effect is low, and the type is that of the label in the record.
+let r = {labelLow : 1, labelHigh<H> : 2};
+let l = (r).labelLow;
+let h = (r).labelHigh;
+if (l) {
+    let h2<H> = 1
+} else {
+    let h2<H> = 1
+};
+if (h) {
+    let l2<L> = 1
+} else {
+    let l2<L> = 1
+}

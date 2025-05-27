@@ -149,7 +149,6 @@ check env pc expr = case expr of
     (IfThen {}) -> error "IfThen: not implemented"
     (Rec expression) -> trace ("Record: " ++ show (Rec expression)) $ do
         let listFields = NE.toList expression
-
         let loop gamma eff [] = return (Environment gamma, eff)
             loop gamma eff (Right (label_i, levelt_i, expr_i) : rest) = do
                 sat (levelt_i `elem` [LH Low, LH High]) "NotSat: levelt_i `elem` [LH Low, LH High]"
