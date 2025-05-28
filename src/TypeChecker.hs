@@ -169,6 +169,13 @@ check env pc expr = case expr of
                         let newGamma = M.insert (Right label_i) (Environment subEnv) gamma
                         let newEff = eff_i /\ eff
                         loop newGamma newEff rest
+                    RefLH rt_i -> do
+                        sat (rt_i `elem` [Low, High]) "NotSat: l `elem` [Low, High]"
+                        sat (pc `joinLeq` (LH rt_i)) $
+                            "NotSat pc <= t_i, t_i: " ++ show t_i ++ ", pc: " ++ show pc ++ ", expr: " ++ show expr_i
+                        let newGamma = M.insert (Right label_i) t_i gamma
+                        let newEff = eff_i /\ eff
+                        loop newGamma newEff rest
                     _ -> do
                         sat (pc `joinLeq` t_i) $
                             "NotSat pc <= t_i, t_i: " ++ show t_i ++ ", pc: " ++ show pc ++ ", expr: " ++ show expr_i
