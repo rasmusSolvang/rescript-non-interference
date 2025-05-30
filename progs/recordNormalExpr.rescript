@@ -1,6 +1,6 @@
 -- This should pass, as all expressions are validly typed. 
 -- If this pass a range of let record, record expr and record field expressions are tested.
--- cabal run exes testsuits/recordNormalExpr.rescript
+-- cabal run exes progs/recordNormalExpr.rescript
 -- Enkelt cases
 let record1 = {l : 1};
 let record2 = {l<L> : 1};

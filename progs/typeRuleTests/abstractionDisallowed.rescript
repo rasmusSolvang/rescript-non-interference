@@ -1,5 +1,5 @@
 -- Should fail, as there is no ordering between functions and Low/High/RefHigh/RefLow
--- cabal run exes testsuits/AbstractionDisallowed.rescript
+-- cabal run exes progs/AbstractionDisallowed.rescript
 
 let add = (x<L>) => {(x + 1)};
 let r = {x1 : add}

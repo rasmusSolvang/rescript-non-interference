@@ -1,4 +1,4 @@
--- cabal run exes testsuits/RecordEffectIsMeet.rescript
+-- cabal run exes progs/RecordEffectIsMeet.rescript
 -- Tests that the effect of a record expression is the (⊓) of field effects.
 -- What is done is the following: A record with two fields are created, hence l1: Low@Low, l2:High@High
 -- Then next, in a high security context the record field with Low@Low is called. 
