@@ -5,7 +5,7 @@
 let record1 = {l : 1};
 let record2 = {l<L> : 1};
 let record11 = {l : ref(1)};
-let record12 = {l : };
+let record12 = {l : true};
 
 
 -- Mixed cases
