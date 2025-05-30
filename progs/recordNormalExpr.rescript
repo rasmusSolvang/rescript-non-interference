@@ -4,6 +4,10 @@
 -- Enkelt cases
 let record1 = {l : 1};
 let record2 = {l<L> : 1};
+let record11 = {l : ref(1)};
+let record12 = {l : };
+
+
 -- Mixed cases
 let record3 = {l : 1, h<H> : 2};
 -- Nested cases

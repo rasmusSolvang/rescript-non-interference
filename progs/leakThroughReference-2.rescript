@@ -5,7 +5,7 @@
 -- but then l is just infered as high
 -- i can not explicitly set it to a low reference in the binding
 -- so we fail in assign and not binding
-let a:H = 2;
+let a<H> = 2;
 let h = ref(a);
 let l = ref(0);
 l := h;

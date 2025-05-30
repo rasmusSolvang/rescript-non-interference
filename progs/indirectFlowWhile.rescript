@@ -1,5 +1,5 @@
 -- should fail when reassign to l
-let a:H = true;
+let a<H> = true;
 let h = ref(a);
 let l = ref(false);
 while (!h) {

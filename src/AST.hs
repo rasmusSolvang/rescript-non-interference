@@ -134,8 +134,6 @@ arity _ = 0
 
 recordChecker :: LevelT -> LevelT
 recordChecker (Environment env1) =
-    trace ("Checking environment: " ++ show env1) $
-
     checkTypes (M.elems env1)
     where
         checkTypes :: [LevelT] -> LevelT

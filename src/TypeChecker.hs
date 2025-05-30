@@ -153,35 +153,32 @@ check env pc expr = case expr of
             loop gamma eff (Right (label_i, levelt_i, expr_i) : rest) = do
                 sat (levelt_i `elem` [LH Low, LH High]) "NotSat: levelt_i `elem` [LH Low, LH High]"
                 t_i :@ eff_i :|> _ <- check env pc expr_i
-                case t_i of
+                newGamma <- case t_i of
                     Environment _ -> do
                         error "A record cannot be explicitly typed"
-                    _ -> do
-                        sat (t_i`joinLeq` levelt_i) "NotSat levelt_i <= t_i"
-                        sat (pc `joinLeq` t_i) "NotSat pc <= t_i"
-                        let newGamma = M.insert (Right label_i) levelt_i gamma
-                        let newEff = eff_i /\ eff
-                        loop newGamma newEff rest
-            loop gamma eff (Left (label_i, expr_i) : rest) = do
-                t_i :@ eff_i :|> _ <- check env pc expr_i
-                case t_i of
-                    Environment subEnv -> do
-                        let newGamma = M.insert (Right label_i) (Environment subEnv) gamma
-                        let newEff = eff_i /\ eff
-                        loop newGamma newEff rest
                     RefLH rt_i -> do
                         sat (rt_i `elem` [Low, High]) "NotSat: l `elem` [Low, High]"
-                        sat (pc `joinLeq` (LH rt_i)) $
-                            "NotSat pc <= t_i, t_i: " ++ show t_i ++ ", pc: " ++ show pc ++ ", expr: " ++ show expr_i
-                        let newGamma = M.insert (Right label_i) t_i gamma
-                        let newEff = eff_i /\ eff
-                        loop newGamma newEff rest
+                        sat (pc `joinLeq` (LH rt_i)) "NotSat: pc <= Ref t_i"
+                        return $ M.insert (Right label_i) t_i gamma
                     _ -> do
-                        sat (pc `joinLeq` t_i) $
-                            "NotSat pc <= t_i, t_i: " ++ show t_i ++ ", pc: " ++ show pc ++ ", expr: " ++ show expr_i
-                        let newGamma = M.insert (Right label_i) t_i gamma
-                        let newEff = eff_i /\ eff
-                        loop newGamma newEff rest
+                        sat (pc `joinLeq` t_i) "NotSat pc <= t_i"
+                        return $ M.insert (Right label_i) t_i gamma
+                let newEff = eff_i /\ eff
+                loop newGamma newEff rest
+            loop gamma eff (Left (label_i, expr_i) : rest) = do
+                t_i :@ eff_i :|> _ <- check env pc expr_i
+                newGamma <- case t_i of
+                    Environment subEnv ->
+                        return $ M.insert (Right label_i) (Environment subEnv) gamma
+                    RefLH rt_i -> do
+                        sat (rt_i `elem` [Low, High]) "NotSat: l `elem` [Low, High]"
+                        sat (pc `joinLeq` (LH rt_i)) "NotSat: pc <= Ref t_i"
+                        return $ M.insert (Right label_i) t_i gamma
+                    _ -> do
+                        sat (pc `joinLeq` t_i) "NotSat pc <= t_i"
+                        return $ M.insert (Right label_i) t_i gamma
+                let newEff = eff_i /\ eff
+                loop newGamma newEff rest
 
         (envResult, effResult) <- loop M.empty Empty listFields
         return $ envResult :@ effResult :|> env

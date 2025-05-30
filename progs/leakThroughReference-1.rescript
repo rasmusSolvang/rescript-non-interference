@@ -1,5 +1,5 @@
 -- should fail when using reassign
 let l = ref(2);
-let a:H = 1;
+let a<H> = 1;
 let h = ref(a);
 h := 4

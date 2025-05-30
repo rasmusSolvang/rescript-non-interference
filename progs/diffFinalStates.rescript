@@ -1,8 +1,11 @@
 -- should be typed
 let h<H> = true;
-if (h) {
+if (h) 
+{
     2
-    } else {
-        3
-        };
+} 
+else 
+{
+    3
+};
 let p = 3

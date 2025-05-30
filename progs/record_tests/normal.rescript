@@ -1,5 +1,0 @@
--- We want to get a state, of L@L where f1 is a Low, f2 is a High - 
-let h<H> = 1;
-let r = {r1 : 1, r2 : h};
-let f1 = (r).r1;
-let f2 = (r).r2 
