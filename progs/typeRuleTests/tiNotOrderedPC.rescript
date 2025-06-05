@@ -1,5 +1,5 @@
 -- This should fail, since we bind a low label in a high security context
--- cabal run exes progs/tiNotOrderedPC.rescript
+-- cabal run exes progs/typeRuleTests/tiNotOrderedPC.rescript
 let h<H> = true;
 if (h) 
     {

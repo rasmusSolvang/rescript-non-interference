@@ -149,8 +149,8 @@ check env pc expr = case expr of
     (IfThen {}) -> error "IfThen: not implemented"
     (Rec expression) -> trace ("Record: " ++ show (Rec expression)) $ do
         let listFields = NE.toList expression
-        let loop gamma eff [] = return (Environment gamma, eff)
-            loop gamma eff (Right (label_i, levelt_i, expr_i) : rest) = do
+        let fieldTypeLoop gamma eff [] = return (Environment gamma, eff)
+            fieldTypeLoop gamma eff (Right (label_i, levelt_i, expr_i) : rest) = do
                 sat (levelt_i `elem` [LH Low, LH High]) "NotSat: levelt_i `elem` [LH Low, LH High]"
                 t_i :@ eff_i :|> _ <- check env pc expr_i
                 newGamma <- case t_i of
@@ -164,8 +164,8 @@ check env pc expr = case expr of
                         sat (pc `joinLeq` t_i) "NotSat pc <= t_i"
                         return $ M.insert (Right label_i) t_i gamma
                 let newEff = eff_i /\ eff
-                loop newGamma newEff rest
-            loop gamma eff (Left (label_i, expr_i) : rest) = do
+                fieldTypeLoop newGamma newEff rest
+            fieldTypeLoop gamma eff (Left (label_i, expr_i) : rest) = do
                 t_i :@ eff_i :|> _ <- check env pc expr_i
                 newGamma <- case t_i of
                     Environment subEnv ->
@@ -178,9 +178,9 @@ check env pc expr = case expr of
                         sat (pc `joinLeq` t_i) "NotSat pc <= t_i"
                         return $ M.insert (Right label_i) t_i gamma
                 let newEff = eff_i /\ eff
-                loop newGamma newEff rest
+                fieldTypeLoop newGamma newEff rest
 
-        (envResult, effResult) <- loop M.empty Empty listFields
+        (envResult, effResult) <- fieldTypeLoop M.empty Empty listFields
         return $ envResult :@ effResult :|> env
     (RecField e l) -> trace ("Record Field: " ++ show e ++ "." ++ show l) $ do
         Environment gamma :@ eff :|> _ <- check env pc e

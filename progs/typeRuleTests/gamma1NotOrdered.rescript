@@ -1,4 +1,4 @@
--- cabal run exes progs/gamma1NotOrdered.rescript
+-- cabal run exes progs/typeRuleTests/gamma1NotOrdered.rescript
 -- This should fail, because a record with a low label is trying to be bound in a high security context. 
 -- It fails due to the constraint  pc <= Gamma_1.
 

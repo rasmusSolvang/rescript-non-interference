@@ -1,5 +1,5 @@
 -- this should fail, as an explicitly low typed label cannot be assigned a high type.
--- cabal run exes progs/ExplicitFieldTypingOrdering.rescript
+-- cabal run exes progs/typeRuleTests/ExplicitFieldTypingOrdering.rescript
 
 let h<H> = true;
 let r = {l<L> : h}

@@ -1,4 +1,4 @@
--- cabal run exes progs/recordFieldConclusion.rescript
+-- cabal run exes progs/typeRuleTests/recordFieldConclusion.rescript
 -- As the if(h) statement sets the pc to high, the let binding should fail
 -- This shows that the return from the record field is correct. 
 -- The effect is low, and the type is that of the label in the record.

@@ -1,4 +1,4 @@
 -- Should fail, as there explcicitly typed fields cannot be environements.
--- cabal run exes progs/explicitFieldEnvironmentDisallowed.rescript
+-- cabal run exes progs/typeRuleTests/explicitFieldEnvironmentDisallowed.rescript
 
 let r = {l1<L> : {l2 : 1}}

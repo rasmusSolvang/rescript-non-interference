@@ -1,4 +1,4 @@
 -- this should fail, as an explicitly typed field must be of type low/high
--- cabal run exes progs/explicitFieldCorrectType.rescript
+-- cabal run exes progs/typeRuleTests/explicitFieldCorrectType.rescript
 
 let r = {l<RL> : 1}
